@@ -86,11 +86,15 @@ tend to be moderately out of date.  Query your Linux package manager tool for
 ``python-pywavelets``, ``python-wavelets``, ``python-pywt`` or a similar
 package name.
 
-If you want or need to install from source, you will need a working C compiler
-(any common one will work) and a recent version of `Cython`_.  Navigate to the
-PyWavelets source code directory (containing ``pyproject.toml``) and type::
+If you want or need to install from source, you will need Meson 1.11 or newer,
+a working C compiler (any common one will work), and a recent version of
+`Cython`_. Navigate to the PyWavelets source code directory (containing
+``pyproject.toml``) and type::
 
     pip install .
+
+The optional Rust DWT backend additionally requires Rust 1.98 or newer. Enable
+it with ``pip install . -Csetup-args=-Duse-rust=true``.
 
 The most recent *development* version can be found on GitHub at
 https://github.com/PyWavelets/pywt.

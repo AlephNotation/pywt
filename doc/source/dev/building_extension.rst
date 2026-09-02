@@ -16,6 +16,12 @@ and type the following commands to build and install the package::
 
     pip install .
 
+Building PyWavelets requires Meson 1.11 or newer. The command above builds the
+C implementation by default. To build the optional Rust DWT backend, also
+install Rust 1.98 or newer, then run::
+
+    pip install . -Csetup-args=-Duse-rust=true
+
 To verify the installation run the following command::
 
     pytest .
