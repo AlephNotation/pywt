@@ -25,12 +25,6 @@ on:
 
 env:
   FORCE_COLOR: 3
-  CIBW_BEFORE_ALL: >-
-    curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused
-    --location --silent --show-error --fail https://sh.rustup.rs |
-    sh -s -- -y --profile minimal --default-toolchain 1.98.0 &&
-    "$HOME/.cargo/bin/rustup" target add wasm32-unknown-emscripten
-  CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH"'
 
 jobs:
   build_wasm_emscripten:

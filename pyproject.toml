@@ -66,7 +66,7 @@ before-build = "bash {project}/util/cibw_before_build_win.sh"
 
 
 [tool.cibuildwheel.pyodide]
-config-settings = {setup-args = ["-Duse-rust=true", "--cross-file={project}/util/meson-rust-emscripten.ini"]}
+config-settings = {setup-args = ["-Duse-rust=false"]}
 
 
 [[tool.cibuildwheel.overrides]]
