@@ -1,8 +1,3 @@
-m_dep = cc.find_library('m', required : false)
-if m_dep.found()
-  add_project_link_arguments('-lm', language : 'c')
-endif
-
 # Don't use the deprecated NumPy C API. Define this to a fixed version instead of
 # NPY_API_VERSION in order not to break compilation for released PyWavelets
 # versions when NumPy introduces a new deprecation.
@@ -102,13 +97,28 @@ pyx_files = [
 ]
 
 cy_deps = declare_dependency(sources: [__init__py, _cython_tree])#, config_pxi])
+rust_link_args = []
+if use_rust and not get_option('debug')
+  rust_link_args = cc.get_supported_link_arguments('-Wl,-S')
+endif
 foreach pyx_file: pyx_files
+  extension_links = [libc_wt]
+  extension_link_args = []
+  extension_dependencies = [np_dep, cy_deps]
+  if use_rust and pyx_file[0] == '_dwt'
+    extension_links += pywt_rust
+    extension_link_args += rust_link_args
+    if host_machine.system() == 'windows'
+      extension_dependencies += cc.find_library('ntdll', required: true)
+    endif
+  endif
   py.extension_module(pyx_file[0],
     [cython_gen.process(pyx_file[1])],
     c_args : c_args,
     include_directories : 'c',
-    dependencies : [np_dep, cy_deps],
-    link_with : libc_wt,
+    dependencies : extension_dependencies,
+    link_args : extension_link_args,
+    link_with : extension_links,
     install: true,
     subdir: 'pywt/_extensions',
   )
