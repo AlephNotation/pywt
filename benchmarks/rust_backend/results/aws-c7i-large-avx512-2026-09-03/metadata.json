@@ -1,0 +1,54 @@
+{
+  "date": "2026-09-03",
+  "cloud": {
+    "provider": "AWS EC2",
+    "region": "us-east-1",
+    "instance_type": "c7i.large",
+    "instance_id": "i-054adeb6bbfcffa44"
+  },
+  "cpu": {
+    "model": "Intel Xeon Platinum 8488C",
+    "logical_cpus": 2,
+    "physical_cores": 1,
+    "benchmark_cpu": 0,
+    "simd_selected": "AVX-512+FMA",
+    "avx512_available": true
+  },
+  "software": {
+    "os": "Ubuntu 24.04.4 LTS",
+    "kernel": "Linux 7.0.0-1011-aws x86_64",
+    "gcc": "13.3.0",
+    "rustc": "1.98.0 (88d9e12ae 2026-08-18)",
+    "python": "3.12.3",
+    "numpy": "2.5.2",
+    "wavelets": "0.1.0-alpha.11+5a192fbb",
+    "wavelets_features": ["default"]
+  },
+  "sources": {
+    "vanilla_pywavelets_commit": "bbdf7ebe95f738cfac9b68e4e9c521e87e5a1956",
+    "rust_backend_commit": "2aa034081f4ab08c9b8a7f5cf9a616736fcb0e24",
+    "wavelets_commit": "5a192fbb1f559d84369de7a9192db23be6e3da71",
+    "wavelets_dependency": "benchmark-only Cargo patch; branch declaration remains crates.io 0.1.0-alpha.11"
+  },
+  "build": {
+    "meson_buildtype": "release",
+    "cargo_integration": "Meson Cargo workspace",
+    "cargo_lto": "thin",
+    "rust_linker_debug_strip": true,
+    "disabled_dispatch_variants": ["sse4.2"],
+    "experimental_kernels": false,
+    "analysis_kernel_policy": "planner-selected default direct FIR",
+    "target_cpu_native": false,
+    "dispatch": "runtime"
+  },
+  "method": {
+    "process_rounds": 6,
+    "layouts_per_process": 64,
+    "dtypes": ["float32", "float64"],
+    "operation_count": 10,
+    "cpu_affinity": "logical CPU 0",
+    "numerical_library_threads": 1,
+    "implementation_order": "alternated each round"
+  },
+  "raw_sha256": "47da8454092221e859369d34bca3d5c4f3177b1b60a82e0f7e937f2eabe108de"
+}
