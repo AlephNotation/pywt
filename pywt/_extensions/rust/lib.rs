@@ -3,12 +3,21 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::slice;
 
-use wavelets::{Boundary, DwtPlanner, Wavelet, WaveletNum};
+use wavelets::{Boundary, DwtPlanner, Wavelet, WaveletError, WaveletNum};
 
 const INVALID_ARGUMENT: i32 = 1;
-const INVALID_FILTER_BANK: i32 = 2;
+// Matches PYWT_RS_UNSUPPORTED_FILTER_BANK in rust_dwt.h. Only this status
+// requests the existing C backend; other errors must remain visible.
+const UNSUPPORTED_FILTER_BANK: i32 = 2;
 const PLAN_FAILED: i32 = 3;
 const PANICKED: i32 = 4;
+
+fn plan_error(error: WaveletError) -> i32 {
+    match error {
+        WaveletError::InvalidFilterBank(_) => UNSUPPORTED_FILTER_BANK,
+        _ => PLAN_FAILED,
+    }
+}
 
 fn boundary(mode: i32) -> Option<Boundary> {
     match mode {
@@ -47,7 +56,7 @@ unsafe fn filters(
     let dec_hi = unsafe { slice::from_raw_parts(dec_hi, filter_len) };
     let rec_lo = unsafe { slice::from_raw_parts(rec_lo, filter_len) };
     let rec_hi = unsafe { slice::from_raw_parts(rec_hi, filter_len) };
-    Wavelet::from_filters(dec_lo, dec_hi, rec_lo, rec_hi).map_err(|_| INVALID_FILTER_BANK)
+    Wavelet::from_filters(dec_lo, dec_hi, rec_lo, rec_hi).map_err(|_| UNSUPPORTED_FILTER_BANK)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -79,7 +88,7 @@ unsafe fn forward<T: WaveletNum>(
             &wavelet,
             boundary(mode).ok_or(INVALID_ARGUMENT)?,
         )
-        .map_err(|_| PLAN_FAILED)?;
+        .map_err(plan_error)?;
     if plan.coeff_len() != coeff_len {
         return Err(INVALID_ARGUMENT);
     }
@@ -121,7 +130,7 @@ unsafe fn inverse<T: WaveletNum>(
             &wavelet,
             boundary(mode).ok_or(INVALID_ARGUMENT)?,
         )
-        .map_err(|_| PLAN_FAILED)?;
+        .map_err(plan_error)?;
     if plan.coeff_len() != coeff_len {
         return Err(INVALID_ARGUMENT);
     }
@@ -204,3 +213,80 @@ macro_rules! axis_ffi {
 
 axis_ffi!(pywt_rs_dwt_axis_f32, pywt_rs_idwt_axis_f32, f32);
 axis_ffi!(pywt_rs_dwt_axis_f64, pywt_rs_idwt_axis_f64, f64);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_unsupported_filter_banks_request_fallback() {
+        assert_eq!(
+            plan_error(WaveletError::InvalidFilterBank("not representable")),
+            UNSUPPORTED_FILTER_BANK
+        );
+        assert_eq!(plan_error(WaveletError::EmptySignal), PLAN_FAILED);
+        assert_eq!(
+            plan_error(WaveletError::BoundaryRequiresLongerSignal {
+                len: 1,
+                minimum: 2,
+                boundary: "reflect",
+            }),
+            PLAN_FAILED
+        );
+        assert_ne!(PANICKED, UNSUPPORTED_FILTER_BANK);
+        assert_ne!(INVALID_ARGUMENT, UNSUPPORTED_FILTER_BANK);
+    }
+
+    #[test]
+    fn unsupported_f32_filters_leave_forward_and_inverse_outputs_untouched() {
+        for bank in 0..4 {
+            let mut filters = [[0.5, 0.5]; 4];
+            filters[bank][0] = 1e40;
+            let signal = [1.0_f32; 8];
+            let coefficients = [1.0_f32; 4];
+            let mut approx = [17.0; 4];
+            let mut detail = [19.0; 4];
+            let mut output = [23.0; 8];
+            // All buffers match the declared tensor geometry and do not alias.
+            let forward_status = unsafe {
+                pywt_rs_dwt_axis_f32(
+                    signal.as_ptr(),
+                    approx.as_mut_ptr(),
+                    detail.as_mut_ptr(),
+                    8,
+                    4,
+                    1,
+                    1,
+                    filters[0].as_ptr(),
+                    filters[1].as_ptr(),
+                    filters[2].as_ptr(),
+                    filters[3].as_ptr(),
+                    2,
+                    1,
+                )
+            };
+            let inverse_status = unsafe {
+                pywt_rs_idwt_axis_f32(
+                    coefficients.as_ptr(),
+                    coefficients.as_ptr(),
+                    output.as_mut_ptr(),
+                    8,
+                    4,
+                    1,
+                    1,
+                    filters[0].as_ptr(),
+                    filters[1].as_ptr(),
+                    filters[2].as_ptr(),
+                    filters[3].as_ptr(),
+                    2,
+                    1,
+                )
+            };
+            assert_eq!(forward_status, UNSUPPORTED_FILTER_BANK);
+            assert_eq!(inverse_status, UNSUPPORTED_FILTER_BANK);
+            assert_eq!(approx, [17.0; 4]);
+            assert_eq!(detail, [19.0; 4]);
+            assert_eq!(output, [23.0; 8]);
+        }
+    }
+}

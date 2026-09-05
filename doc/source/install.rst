@@ -41,6 +41,11 @@ it with::
 
     pip install . -Csetup-args=-Duse-rust=true
 
+The Rust backend requires filter coefficients to remain finite in the execution
+dtype. Custom filter banks outside that domain use the existing C backend,
+preserving PyWavelets' behavior rather than introducing backend-dependent
+validation errors. Other Rust planning or execution errors are not suppressed.
+
 For the requirements needed to build from source are (Python, NumPy and Cython
 minimum versions in particular), see ``pyproject.toml``.
 

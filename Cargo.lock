@@ -17,9 +17,9 @@ dependencies = [
 
 [[package]]
 name = "wavelets"
-version = "0.1.0-alpha.11"
+version = "0.1.0-alpha.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8aca89650c3871dc3141f76a3502619dc1c2ec00d7a84bc2fd12559c4693490e"
+checksum = "c7c451a1fbb5eb94b9d5cc99c5c92ecfab07193c7af4dacb911f929aaae8efc6"
 dependencies = [
  "fearless_simd",
 ]

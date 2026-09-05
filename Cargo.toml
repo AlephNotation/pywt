@@ -12,4 +12,4 @@ path = "pywt/_extensions/rust/lib.rs"
 crate-type = ["staticlib"]
 
 [dependencies]
-wavelets = "0.1.0-alpha.11"
+wavelets = "0.1.0-alpha.12"

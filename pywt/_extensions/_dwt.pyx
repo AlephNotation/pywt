@@ -13,6 +13,8 @@ np.import_array()
 
 IF HAVE_RUST_DWT:
     cdef extern from "rust_dwt.h" nogil:
+        enum:
+            PYWT_RS_UNSUPPORTED_FILTER_BANK
         int pywt_rs_dwt_axis_f32(
             const float *input, float *approx, float *detail,
             size_t signal_len, size_t coeff_len, size_t outer, size_t inner,
@@ -165,6 +167,7 @@ cpdef dwt_axis(np.ndarray data, Wavelet wavelet, MODE mode, unsigned int axis=0)
                         wavelet.w.dec_lo_double, wavelet.w.dec_hi_double,
                         wavelet.w.rec_lo_double, wavelet.w.rec_hi_double,
                         wavelet.w.dec_len, mode)
+                use_rust = retval != PYWT_RS_UNSUPPORTED_FILTER_BANK
         if not use_rust:
             with nogil:
                 retval = c_wt.double_downcoef_axis(<double *> data.data, data_info,
@@ -191,6 +194,7 @@ cpdef dwt_axis(np.ndarray data, Wavelet wavelet, MODE mode, unsigned int axis=0)
                         wavelet.w.dec_lo_double, wavelet.w.dec_hi_double,
                         wavelet.w.rec_lo_double, wavelet.w.rec_hi_double,
                         wavelet.w.dec_len, mode)
+                use_rust = retval != PYWT_RS_UNSUPPORTED_FILTER_BANK
         if not use_rust:
             with nogil:
                 retval = c_wt.float_downcoef_axis(<float *> data.data, data_info,
@@ -394,6 +398,7 @@ cpdef idwt_axis(np.ndarray coefs_a, np.ndarray coefs_d,
                         wavelet.w.dec_lo_double, wavelet.w.dec_hi_double,
                         wavelet.w.rec_lo_double, wavelet.w.rec_hi_double,
                         wavelet.w.rec_len, mode)
+                use_rust = retval != PYWT_RS_UNSUPPORTED_FILTER_BANK
         if not use_rust:
             with nogil:
                 retval = c_wt.double_idwt_axis(<double *> data_a, a_info_p,
@@ -413,6 +418,7 @@ cpdef idwt_axis(np.ndarray coefs_a, np.ndarray coefs_d,
                         wavelet.w.dec_lo_double, wavelet.w.dec_hi_double,
                         wavelet.w.rec_lo_double, wavelet.w.rec_hi_double,
                         wavelet.w.rec_len, mode)
+                use_rust = retval != PYWT_RS_UNSUPPORTED_FILTER_BANK
         if not use_rust:
             with nogil:
                 retval = c_wt.float_idwt_axis(<float *> data_a, a_info_p,

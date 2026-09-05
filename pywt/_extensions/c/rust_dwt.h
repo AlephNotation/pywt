@@ -2,6 +2,13 @@
 
 #include <stddef.h>
 
+/* The filter bank is outside the Rust backend's supported domain, including
+ * coefficients that become non-finite in the execution dtype. No output has
+ * been written; the caller may use the incumbent C backend. Other nonzero
+ * statuses are errors, not fallback requests.
+ */
+enum { PYWT_RS_UNSUPPORTED_FILTER_BANK = 2 };
+
 int pywt_rs_dwt_axis_f32(
     const float *input,
     float *approx,

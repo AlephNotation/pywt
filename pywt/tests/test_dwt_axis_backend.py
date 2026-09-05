@@ -106,6 +106,50 @@ def test_axis_backend_matches_c_custom_filter_bank(dtype):
     _assert_matches_c(data, wavelet, "antireflect", 1)
 
 
+@pytest.mark.parametrize("dtype", DTYPES)
+@pytest.mark.parametrize("axis", (0, 1, 2))
+@pytest.mark.parametrize("mode_name", pywt.Modes.modes)
+@pytest.mark.parametrize("bank", range(4))
+@pytest.mark.parametrize("tap", (1e40, -1e40))
+def test_axis_backend_preserves_c_for_out_of_range_custom_taps(
+    dtype, axis, mode_name, bank, tap
+):
+    # PyWavelets accepts these finite f64 taps even when they overflow float32.
+    # The optional backend must preserve C behavior, including finite boundary
+    # coefficients beside overflowing ones, rather than raise or add NaNs.
+    filters = [[0.25, 0.5, 0.75, 1.0] for _ in range(4)]
+    filters[bank][1] = tap
+    wavelet = pywt.Wavelet("out_of_range", filters)
+    mode = pywt.Modes.from_object(mode_name)
+    data = np.ones((3, 17, 4), dtype=dtype)
+    actual = _dwt.dwt_axis(data, wavelet, mode, axis)
+    expected = _c_dwt_axis(data, wavelet, mode, axis)
+    for actual_band, expected_band in zip(actual, expected):
+        assert_allclose(actual_band, expected_band, **_tolerances(dtype))
+        if dtype == np.float64:
+            assert np.isfinite(actual_band).all()
+
+    # Inverse inputs are finite and independent of the overflowing forward
+    # result, so this also checks synthesis-only oversized coefficients.
+    approx = np.ones_like(actual[0])
+    detail = np.ones_like(actual[1])
+    reconstructed = _dwt.idwt_axis(approx, detail, wavelet, mode, axis)
+    expected = _c_idwt_axis(approx, detail, wavelet, mode, axis)
+    assert_allclose(reconstructed, expected, **_tolerances(dtype))
+    if dtype == np.float64:
+        assert np.isfinite(reconstructed).all()
+
+
+@pytest.mark.parametrize("dtype", DTYPES)
+@pytest.mark.parametrize("tap", (np.inf, -np.inf, np.nan))
+def test_axis_backend_preserves_c_for_nonfinite_custom_taps(dtype, tap):
+    # Non-finite f64 banks are likewise outside the Rust filter domain.
+    # This exercises fallback for both float32 and float64 bridge entry points.
+    wavelet = pywt.Wavelet("nonfinite", ([tap, 0.5],) * 4)
+    data = np.ones((3, 4), dtype=dtype)
+    _assert_matches_c(data, wavelet, "zero", 1)
+
+
 @pytest.mark.parametrize("missing", ("approx", "detail"))
 def test_axis_backend_accepts_one_missing_coefficient_band(missing):
     data = np.random.default_rng(2).standard_normal((5, 17))

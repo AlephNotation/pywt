@@ -3,10 +3,14 @@
 These are end-to-end timings of normal PyWavelets calls from two isolated
 Python environments. `vanilla` is upstream commit `bbdf7eb`; `rust` is branch
 commit `2aa0340` using wavelets commit `5a192fb`. The exact wavelets revision
-was selected with a benchmark-only Cargo patch; the branch's public dependency
-remains crates.io `wavelets 0.1.0-alpha.11`. The experimental lattice and
-annihilator kernels were not enabled. Lower times and higher speedups are
-better.
+was selected with a benchmark-only Cargo patch. The experimental lattice and
+annihilator kernels were not enabled. Lower times and higher speedups are better.
+
+These are retained measurements of the revisions above, not a new measurement
+of the current branch. The branch now uses public `wavelets 0.1.0-alpha.12`,
+a filter-validation fix based on alpha.11 that excludes later performance
+experiments. The tables and alpha.11 wheel-size results below have not been
+remeasured for alpha.12.
 
 | Host                   | Precision | Forward geometric mean | Inverse geometric mean | Overall geometric mean |       Range |
 | ---------------------- | --------: | ---------------------: | ---------------------: | ---------------------: | ----------: |
