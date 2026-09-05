@@ -36,6 +36,33 @@ class IdwtTimeSuite(DwtTimeSuiteBase):
         pywt.idwt(self.cA, self.cD, wavelet, mode)
 
 
+class DwtAxisTimeSuiteBase:
+    """Set-up for transforms over contiguous and strided array axes."""
+    params = ([(256, 256), (16, 64, 256)],
+              [0, -1],
+              ['db4', 'db38'],
+              [np.float32, np.float64])
+    param_names = ('shape', 'axis', 'wavelet', 'dtype')
+
+    def setup(self, shape, axis, wavelet, dtype):
+        rng = np.random.default_rng(0)
+        self.data = rng.standard_normal(shape).astype(dtype)
+
+
+class DwtAxisTimeSuite(DwtAxisTimeSuiteBase):
+    def time_dwt_axis(self, shape, axis, wavelet, dtype):
+        pywt.dwt(self.data, wavelet, axis=axis)
+
+
+class IdwtAxisTimeSuite(DwtAxisTimeSuiteBase):
+    def setup(self, shape, axis, wavelet, dtype):
+        super().setup(shape, axis, wavelet, dtype)
+        self.cA, self.cD = pywt.dwt(self.data, wavelet, axis=axis)
+
+    def time_idwt_axis(self, shape, axis, wavelet, dtype):
+        pywt.idwt(self.cA, self.cD, wavelet, axis=axis)
+
+
 class Dwt2TimeSuiteBase:
     """
     Set-up for (I)DWT2 timing.

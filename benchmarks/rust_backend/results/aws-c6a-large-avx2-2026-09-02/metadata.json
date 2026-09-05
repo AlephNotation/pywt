@@ -1,0 +1,52 @@
+{
+  "date": "2026-09-02",
+  "cloud": {
+    "provider": "AWS EC2",
+    "region": "us-east-1",
+    "instance_type": "c6a.large",
+    "instance_id": "i-0a8b2ca80df7e39df"
+  },
+  "cpu": {
+    "model": "AMD EPYC 7R13 Processor",
+    "logical_cpus": 2,
+    "physical_cores": 1,
+    "benchmark_cpu": 0,
+    "simd_selected": "AVX2+FMA",
+    "avx512_available": false
+  },
+  "software": {
+    "os": "Ubuntu 24.04.4 LTS",
+    "kernel": "Linux 7.0.0-1011-aws x86_64",
+    "gcc": "13.3.0",
+    "rustc": "1.98.0 (88d9e12ae 2026-08-18)",
+    "python": "3.12.3",
+    "numpy": "2.5.2",
+    "wavelets": "0.1.0-alpha.11",
+    "wavelets_features": ["default"]
+  },
+  "sources": {
+    "vanilla_pywavelets_commit": "bbdf7ebe95f738cfac9b68e4e9c521e87e5a1956",
+    "rust_backend_commit": "170ea7c04a8071447dc76a3e2dfe387cd53d9fd8"
+  },
+  "build": {
+    "meson_buildtype": "release",
+    "cargo_integration": "Meson Cargo workspace",
+    "cargo_lto": "thin",
+    "rust_linker_debug_strip": true,
+    "disabled_dispatch_variants": ["sse4.2"],
+    "experimental_kernels": false,
+    "analysis_kernel_policy": "direct FIR",
+    "target_cpu_native": false,
+    "dispatch": "runtime"
+  },
+  "method": {
+    "process_rounds": 6,
+    "layouts_per_process": 64,
+    "dtypes": ["float32", "float64"],
+    "operation_count": 10,
+    "cpu_affinity": "logical CPU 0",
+    "numerical_library_threads": 1,
+    "implementation_order": "alternated each round"
+  },
+  "raw_sha256": "70d800d52f9bfc0ebbe48d33d8eaa5f448bba9fb0739046b0937407ff3c96561"
+}

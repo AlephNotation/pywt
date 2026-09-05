@@ -1,0 +1,3 @@
+implementation,wheel_bytes,wheel_uncompressed_bytes,dwt_compressed_bytes,dwt_uncompressed_bytes
+vanilla,4457489,8638215,196328,521720
+rust,4779388,9454425,516561,1332896

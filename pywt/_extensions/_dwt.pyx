@@ -11,6 +11,35 @@ include "config.pxi"
 
 np.import_array()
 
+IF HAVE_RUST_DWT:
+    cdef extern from "rust_dwt.h" nogil:
+        enum:
+            PYWT_RS_UNSUPPORTED_FILTER_BANK
+        int pywt_rs_dwt_axis_f32(
+            const float *input, float *approx, float *detail,
+            size_t signal_len, size_t coeff_len, size_t outer, size_t inner,
+            const double *dec_lo, const double *dec_hi,
+            const double *rec_lo, const double *rec_hi,
+            size_t filter_len, int mode) noexcept
+        int pywt_rs_dwt_axis_f64(
+            const double *input, double *approx, double *detail,
+            size_t signal_len, size_t coeff_len, size_t outer, size_t inner,
+            const double *dec_lo, const double *dec_hi,
+            const double *rec_lo, const double *rec_hi,
+            size_t filter_len, int mode) noexcept
+        int pywt_rs_idwt_axis_f32(
+            const float *approx, const float *detail, float *output,
+            size_t signal_len, size_t coeff_len, size_t outer, size_t inner,
+            const double *dec_lo, const double *dec_hi,
+            const double *rec_lo, const double *rec_hi,
+            size_t filter_len, int mode) noexcept
+        int pywt_rs_idwt_axis_f64(
+            const double *approx, const double *detail, double *output,
+            size_t signal_len, size_t coeff_len, size_t outer, size_t inner,
+            const double *dec_lo, const double *dec_hi,
+            const double *rec_lo, const double *rec_hi,
+            size_t filter_len, int mode) noexcept
+
 cpdef dwt_max_level(size_t data_len, size_t filter_len):
     return common.dwt_max_level(data_len, filter_len)
 
@@ -88,6 +117,10 @@ cpdef dwt_axis(np.ndarray data, Wavelet wavelet, MODE mode, unsigned int axis=0)
     cdef np.ndarray cD, cA
     # Explicit input_shape necessary to prevent memory leak
     cdef size_t[::1] input_shape, output_shape
+    cdef size_t outer = 1
+    cdef size_t inner = 1
+    cdef size_t dimension
+    cdef bint use_rust
     cdef int retval = -5
 
 
@@ -95,6 +128,8 @@ cpdef dwt_axis(np.ndarray data, Wavelet wavelet, MODE mode, unsigned int axis=0)
         raise ValueError("Input data length must be greater than 1 for [anti]reflect mode along the transformed axis.")
 
     data = data.astype(_check_dtype(data), copy=False)
+    if data.dtype == np.float32 or data.dtype == np.float64:
+        data = np.ascontiguousarray(data)
 
     input_shape = <size_t [:data.ndim]> <size_t *> data.shape
     output_shape = input_shape.copy()
@@ -111,36 +146,70 @@ cpdef dwt_axis(np.ndarray data, Wavelet wavelet, MODE mode, unsigned int axis=0)
     output_info.strides = <pywt_index_t *> cA.strides
     output_info.shape = <size_t *> cA.shape
 
+    IF HAVE_RUST_DWT:
+        use_rust = data.dtype == np.float32 or data.dtype == np.float64
+    ELSE:
+        use_rust = False
+    if use_rust:
+        for dimension in range(axis):
+            outer *= data.shape[dimension]
+        for dimension in range(axis + 1, data.ndim):
+            inner *= data.shape[dimension]
+
     if data.dtype == np.float64:
-        with nogil:
-            retval = c_wt.double_downcoef_axis(<double *> data.data, data_info,
-                                         <double *> cA.data, output_info,
-                                         wavelet.w, axis, common.COEF_APPROX, mode,
+        IF HAVE_RUST_DWT:
+            if use_rust:
+                with nogil:
+                    retval = pywt_rs_dwt_axis_f64(
+                        <double *> data.data, <double *> cA.data,
+                        <double *> cD.data, data.shape[axis],
+                        cA.shape[axis], outer, inner,
+                        wavelet.w.dec_lo_double, wavelet.w.dec_hi_double,
+                        wavelet.w.rec_lo_double, wavelet.w.rec_hi_double,
+                        wavelet.w.dec_len, mode)
+                use_rust = retval != PYWT_RS_UNSUPPORTED_FILTER_BANK
+        if not use_rust:
+            with nogil:
+                retval = c_wt.double_downcoef_axis(<double *> data.data, data_info,
+                                             <double *> cA.data, output_info,
+                                             wavelet.w, axis, common.COEF_APPROX, mode,
+                                             0, common.DWT_TRANSFORM)
+            if retval:
+                raise RuntimeError("C wavelet transform failed")
+            with nogil:
+                retval = c_wt.double_downcoef_axis(<double *> data.data, data_info,
+                                         <double *> cD.data, output_info,
+                                         wavelet.w, axis, common.COEF_DETAIL, mode,
                                          0, common.DWT_TRANSFORM)
         if retval:
-            raise RuntimeError("C wavelet transform failed")
-        with nogil:
-            retval = c_wt.double_downcoef_axis(<double *> data.data, data_info,
-                                     <double *> cD.data, output_info,
-                                     wavelet.w, axis, common.COEF_DETAIL, mode,
-                                     0, common.DWT_TRANSFORM)
-        if retval:
-            raise RuntimeError("C wavelet transform failed")
+            raise RuntimeError("Wavelet transform failed")
     elif data.dtype == np.float32:
-        with nogil:
-            retval = c_wt.float_downcoef_axis(<float *> data.data, data_info,
-                                    <float *> cA.data, output_info,
-                                    wavelet.w, axis, common.COEF_APPROX, mode,
-                                    0, common.DWT_TRANSFORM)
+        IF HAVE_RUST_DWT:
+            if use_rust:
+                with nogil:
+                    retval = pywt_rs_dwt_axis_f32(
+                        <float *> data.data, <float *> cA.data,
+                        <float *> cD.data, data.shape[axis],
+                        cA.shape[axis], outer, inner,
+                        wavelet.w.dec_lo_double, wavelet.w.dec_hi_double,
+                        wavelet.w.rec_lo_double, wavelet.w.rec_hi_double,
+                        wavelet.w.dec_len, mode)
+                use_rust = retval != PYWT_RS_UNSUPPORTED_FILTER_BANK
+        if not use_rust:
+            with nogil:
+                retval = c_wt.float_downcoef_axis(<float *> data.data, data_info,
+                                        <float *> cA.data, output_info,
+                                        wavelet.w, axis, common.COEF_APPROX, mode,
+                                        0, common.DWT_TRANSFORM)
+            if retval:
+                raise RuntimeError("C wavelet transform failed")
+            with nogil:
+                retval = c_wt.float_downcoef_axis(<float *> data.data, data_info,
+                                        <float *> cD.data, output_info,
+                                        wavelet.w, axis, common.COEF_DETAIL, mode,
+                                        0, common.DWT_TRANSFORM)
         if retval:
-            raise RuntimeError("C wavelet transform failed")
-        with nogil:
-            retval = c_wt.float_downcoef_axis(<float *> data.data, data_info,
-                                    <float *> cD.data, output_info,
-                                    wavelet.w, axis, common.COEF_DETAIL, mode,
-                                    0, common.DWT_TRANSFORM)
-        if retval:
-            raise RuntimeError("C wavelet transform failed")
+            raise RuntimeError("Wavelet transform failed")
     IF HAVE_C99_CPLX:
         if data.dtype == np.complex64:
             with nogil:
@@ -254,6 +323,11 @@ cpdef idwt_axis(np.ndarray coefs_a, np.ndarray coefs_d,
     cdef void *data_d = NULL
     # Explicit input_shape necessary to prevent memory leak
     cdef size_t[::1] input_shape, output_shape
+    cdef size_t outer = 1
+    cdef size_t inner = 1
+    cdef size_t dimension
+    cdef size_t reconstruction_len
+    cdef bint use_rust
     cdef int retval = -5
 
     if coefs_a is not None:
@@ -286,31 +360,73 @@ cpdef idwt_axis(np.ndarray coefs_a, np.ndarray coefs_d,
     else:
         return None
 
+    reconstruction_len = common.idwt_buffer_length(input_shape[axis],
+                                                    wavelet.rec_len, mode)
+    if reconstruction_len < 1:
+        raise ValueError(
+            "Invalid coefficient arrays length for specified wavelet. "
+            "Wavelet and mode must be the same as used for decomposition."
+        )
     output_shape = input_shape.copy()
-    output_shape[axis] = common.idwt_buffer_length(input_shape[axis],
-                                                   wavelet.rec_len, mode)
+    output_shape[axis] = reconstruction_len
     output = np.empty(output_shape, output_dtype)
 
     output_info.ndim = output.ndim
     output_info.strides = <pywt_index_t *> output.strides
     output_info.shape = <size_t *> output.shape
 
+    IF HAVE_RUST_DWT:
+        use_rust = (coefs_a is not None and coefs_d is not None and
+                    np.PyArray_IS_C_CONTIGUOUS(coefs_a) and
+                    np.PyArray_IS_C_CONTIGUOUS(coefs_d))
+    ELSE:
+        use_rust = False
+    if use_rust:
+        for dimension in range(axis):
+            outer *= output.shape[dimension]
+        for dimension in range(axis + 1, output.ndim):
+            inner *= output.shape[dimension]
+
     if output.dtype == np.float64:
-        with nogil:
-            retval = c_wt.double_idwt_axis(<double *> data_a, a_info_p,
-                                 <double *> data_d, d_info_p,
-                                 <double *> output.data, output_info,
-                                 wavelet.w, axis, mode)
+        IF HAVE_RUST_DWT:
+            if use_rust:
+                with nogil:
+                    retval = pywt_rs_idwt_axis_f64(
+                        <double *> data_a, <double *> data_d,
+                        <double *> output.data, output.shape[axis],
+                        input_shape[axis], outer, inner,
+                        wavelet.w.dec_lo_double, wavelet.w.dec_hi_double,
+                        wavelet.w.rec_lo_double, wavelet.w.rec_hi_double,
+                        wavelet.w.rec_len, mode)
+                use_rust = retval != PYWT_RS_UNSUPPORTED_FILTER_BANK
+        if not use_rust:
+            with nogil:
+                retval = c_wt.double_idwt_axis(<double *> data_a, a_info_p,
+                                     <double *> data_d, d_info_p,
+                                     <double *> output.data, output_info,
+                                     wavelet.w, axis, mode)
         if retval:
-            raise RuntimeError("C inverse wavelet transform failed")
+            raise RuntimeError("Inverse wavelet transform failed")
     elif output.dtype == np.float32:
-        with nogil:
-            retval = c_wt.float_idwt_axis(<float *> data_a, a_info_p,
-                                <float *> data_d, d_info_p,
-                                <float *> output.data, output_info,
-                                wavelet.w, axis, mode)
+        IF HAVE_RUST_DWT:
+            if use_rust:
+                with nogil:
+                    retval = pywt_rs_idwt_axis_f32(
+                        <float *> data_a, <float *> data_d,
+                        <float *> output.data, output.shape[axis],
+                        input_shape[axis], outer, inner,
+                        wavelet.w.dec_lo_double, wavelet.w.dec_hi_double,
+                        wavelet.w.rec_lo_double, wavelet.w.rec_hi_double,
+                        wavelet.w.rec_len, mode)
+                use_rust = retval != PYWT_RS_UNSUPPORTED_FILTER_BANK
+        if not use_rust:
+            with nogil:
+                retval = c_wt.float_idwt_axis(<float *> data_a, a_info_p,
+                                    <float *> data_d, d_info_p,
+                                    <float *> output.data, output_info,
+                                    wavelet.w, axis, mode)
         if retval:
-            raise RuntimeError("C inverse wavelet transform failed")
+            raise RuntimeError("Inverse wavelet transform failed")
     IF HAVE_C99_CPLX:
         if output.dtype == np.complex128:
             with nogil:

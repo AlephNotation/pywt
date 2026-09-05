@@ -56,9 +56,22 @@ source = "https://github.com/PyWavelets/pywt"
 documentation = "https://pywavelets.readthedocs.io/"
 
 
+[tool.cibuildwheel]
+config-settings = {setup-args = ["-Duse-rust=true"]}
+
+
 [tool.cibuildwheel.windows]
-config-settings = {setup-args = ["--vsenv"]}
+config-settings = {setup-args = ["--vsenv", "-Duse-rust=true"]}
 before-build = "bash {project}/util/cibw_before_build_win.sh"
+
+
+[tool.cibuildwheel.pyodide]
+config-settings = {setup-args = ["-Duse-rust=false"]}
+
+
+[[tool.cibuildwheel.overrides]]
+select = "*-win32"
+config-settings = {setup-args = ["--vsenv", "-Duse-rust=true", "--native-file={project}/util/meson-rust-i686-msvc.ini"]}
 
 
 [tool.ruff]

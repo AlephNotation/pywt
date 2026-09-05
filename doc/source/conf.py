@@ -373,10 +373,9 @@ plot_html_show_source_link = False
 
 # -- Options for intersphinx extension ---------------------------------------
 
-# Intersphinx to get NumPy, SciPy, and other targets
+# Intersphinx targets used by the API documentation
 intersphinx_mapping = {
     'numpy': ('https://numpy.org/devdocs', None),
-    'scipy': ('https://docs.scipy.org/doc/scipy/', None),
     }
 
 # -- Options for JupyterLite -------------------------------------------------

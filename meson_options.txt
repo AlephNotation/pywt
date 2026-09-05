@@ -1,0 +1,6 @@
+option(
+  'use-rust',
+  type: 'boolean',
+  value: false,
+  description: 'Build the optional Rust DWT axis backend',
+)

@@ -38,6 +38,7 @@ cc = meson.get_compiler('c')
 # Check for C99 complex types support. MSVC shouldn't have it, other compilers
 # most likely will.
 cdata = configuration_data()
+cdata.set('have_rust_dwt_cy', use_rust ? '1' : '0')
 have_c99_complex = cc.has_type('complex float', prefix: '#include <complex.h>')
 if have_c99_complex
   cdata.set('have_c99_complex', 'True')

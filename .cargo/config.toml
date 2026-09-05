@@ -1,0 +1,5 @@
+# SSE4.2 adds another copy of every Fearless SIMD kernel without widening the
+# vectors used by the x86-64 baseline. Keep the baseline fallback for older
+# CPUs, then dispatch directly to AVX2 or AVX-512 when either is available.
+[target.'cfg(target_arch = "x86_64")']
+rustflags = ["--cfg", "disable_dispatch_sse4_2"]
